@@ -363,10 +363,49 @@
 
 							// Show article.
 								$main._show(location.hash.substr(1));
-
 						}
 
 				});
+
+			// Feedbacks link click handler.
+			$('a[href="#feedbacks"]').on('click', function() {
+				loadFeedbacks();
+			});
+
+			// Function to load feedbacks.
+			function loadFeedbacks() {
+				var feedbackList = $('#feedback-list');
+				feedbackList.html('<p>Loading feedbacks...</p>');
+
+				fetch('/api/posts')
+					.then(function(response) {
+						if (!response.ok) {
+							throw new Error('Network response was not ok');
+						}
+						return response.json();
+					})
+					.then(function(feedbacks) {
+						feedbackList.empty();
+						if (feedbacks.length === 0) {
+							feedbackList.html('<p>No feedbacks yet.</p>');
+							return;
+						}
+
+						var ul = $('<ul>');
+						feedbacks.forEach(function(feedback) {
+							var li = $('<li>');
+							li.append('<h3>' + feedback.name + '</h3>');
+							li.append('<p>' + feedback.message + '</p>');
+							li.append('<small>' + feedback.email + '</small>');
+							ul.append(li);
+						});
+						feedbackList.append(ul);
+					})
+					.catch(function(error) {
+						console.error('Error fetching feedbacks:', error);
+						feedbackList.html('<p>Error loading feedbacks.</p>');
+					});
+			}
 
 			// Scroll restoration.
 			// This prevents the page from scrolling back to the top on a hashchange.
@@ -398,12 +437,46 @@
 					$main_articles.hide();
 
 				// Initial article.
-					if (location.hash != ''
-					&&	location.hash != '#')
-						$window.on('load', function() {
-							$main._show(location.hash.substr(1), true);
+								if (location.hash != ''
+								&&	location.hash != '#')
+									$window.on('load', function() {
+										$main._show(location.hash.substr(1), true);
+									});
+				
+						// Contact form submission.
+						$('#contact > form').on('submit', function(event) {
+							event.preventDefault();
+				
+							var name = $('#name').val();
+							var email = $('#email').val();
+							var message = $('#message').val();
+				
+							fetch('/api/post', {
+								method: 'POST',
+								headers: {
+									'Content-Type': 'application/json',
+								},
+								body: JSON.stringify({
+									name: name,
+									email: email,
+									message: message,
+								}),
+							})
+							.then(function(response) {
+								if (response.ok) {
+									alert('Message sent successfully!');
+									$('#name').val('');
+									$('#email').val('');
+									$('#message').val('');
+								} else {
+									alert('Error sending message.');
+								}
+							})
+							.catch(function(error) {
+								console.error('Error:', error);
+								alert('Error sending message.');
+							});
 						});
-
-	});
-
-})(jQuery);
+					});
+				
+				})(jQuery);
