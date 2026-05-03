@@ -7,12 +7,23 @@ app = Flask(__name__)
 REPO_PATH = "/home/admin/catty-reminders-app"  # <-- замените admin на вашего пользователя
 VENV_PIP = f"{REPO_PATH}/venv/bin/pip"
 
+GIT = "/usr/bin/git"
+SYSTEMCTL = "/usr/bin/systemctl"
+
 def deploy():
     try:
         subprocess.run(["git", "pull"], cwd=REPO_PATH, check=True)
-        subprocess.run([VENV_PIP, "install", "-r", "requirements.txt"], cwd=REPO_PATH, check=True)
+        
+        current_hash = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], 
+            cwd=REPO_PATH
+        ).decode().strip()
+        
+        with open("/etc/catty-app-env", "w") as f:
+            f.write(f"DEPLOY_REF={current_hash}\n")
+            
         subprocess.run(["sudo", "systemctl", "restart", "catty-reminders"], check=True)
-        print("✅ Успешный деплой")
+        print(f"✅ Деплой успешен. Новый deployref: {current_hash}")
     except Exception as e:
         print(f"❌ Ошибка деплоя: {e}")
 
