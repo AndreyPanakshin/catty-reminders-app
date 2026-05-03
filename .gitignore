@@ -1,0 +1,15 @@
+venv/
+env/
+.venv/
+*.egg-info/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Логи и временные файлы
+*.log
+*.tmp
