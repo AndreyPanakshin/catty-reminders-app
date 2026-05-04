@@ -1,0 +1,37 @@
+name: CD
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Сборка на GitHub Runner (установка зависимостей)
+      - name: Build (install dependencies)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 2. Деплой на виртуальную машину через SSH
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: course.prafdin.ru
+          username: admin
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2200
+          script: |
+            cd /home/admin/catty-reminders-app
+            git fetch origin
+            git reset --hard origin/$(git describe --tags --abbrev=0)
+            
+            # Обновляем зависимости в venv
+            /home/admin/catty-reminders-app/venv/bin/pip install -r requirements.txt
+            
+            # Перезапускаем приложение и обновляем deployref
+            sudo systemctl restart catty-reminders
+            echo "DEPLOY_REF=$(git rev-parse HEAD)" | sudo tee /etc/catty-app-env
+            echo "✅ Deployed commit: $(git rev-parse HEAD)"
