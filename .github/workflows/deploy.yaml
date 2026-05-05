@@ -20,16 +20,17 @@ jobs:
       - name: Deploy to VM via SSH
         uses: appleboy/ssh-action@v1
         with:
-  …stall dependencies
+          host: course.prafdin.ru
+          username: admin
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 2200
+          script: |
+            cd /home/admin/catty-reminders-app
+            TAG_NAME="${{ github.event.release.tag_name }}"
+            git fetch origin --tags
+            git reset --hard "refs/tags/${TAG_NAME}"
             /home/admin/catty-reminders-app/venv/bin/pip install -r requirements.txt
-            
-            # Get current SHA after reset
             CURRENT_SHA=$(git rev-parse HEAD)
-            
-            # Update deploy ref file
             echo "DEPLOY_REF=${CURRENT_SHA}" | sudo tee /etc/catty-app-env
-            
-            # Restart application
             sudo systemctl restart catty-reminders
-            
-            echo "✅ Deployed ${TAG_NAME} -> ${CURRENT_SHA}"
+            echo "Deployed ${TAG_NAME} -> ${CURRENT_SHA}"
