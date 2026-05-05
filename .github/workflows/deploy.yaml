@@ -7,31 +7,29 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # 1. Сборка на GitHub Runner (установка зависимостей)
-      - name: Build (install dependencies)
+      - name: Build (install dependencies on Runner)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      # 2. Деплой на виртуальную машину через SSH
-      - name: Deploy to VM
+      - name: Deploy to VM via SSH
         uses: appleboy/ssh-action@v1
         with:
-          host: course.prafdin.ru
-          username: admin
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 2200
-          script: |
-            cd /home/admin/catty-reminders-app
-            git fetch origin
-            git reset --hard origin/$(git describe --tags --abbrev=0)
-            
-            # Обновляем зависимости в venv
+  …stall dependencies
             /home/admin/catty-reminders-app/venv/bin/pip install -r requirements.txt
             
-            # Перезапускаем приложение и обновляем deployref
+            # Get current SHA after reset
+            CURRENT_SHA=$(git rev-parse HEAD)
+            
+            # Update deploy ref file
+            echo "DEPLOY_REF=${CURRENT_SHA}" | sudo tee /etc/catty-app-env
+            
+            # Restart application
             sudo systemctl restart catty-reminders
-            echo "DEPLOY_REF=$(git rev-parse HEAD)" | sudo tee /etc/catty-app-env
-            echo "✅ Deployed commit: $(git rev-parse HEAD)"
+            
+            echo "✅ Deployed ${TAG_NAME} -> ${CURRENT_SHA}"
