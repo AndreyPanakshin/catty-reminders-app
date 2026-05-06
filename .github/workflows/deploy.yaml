@@ -21,10 +21,11 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: course.prafdin.ru
+          port: 2200
           username: admin
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 2200
           script: |
+            set -e
             cd /home/admin/catty-reminders-app
             TAG_NAME="${{ github.event.release.tag_name }}"
             git fetch origin --tags
@@ -33,4 +34,11 @@ jobs:
             CURRENT_SHA=$(git rev-parse HEAD)
             echo "DEPLOY_REF=${CURRENT_SHA}" | sudo tee /etc/catty-app-env
             sudo systemctl restart catty-reminders
-            echo "Deployed ${TAG_NAME} -> ${CURRENT_SHA}"
+            sleep 3
+            if curl -sL http://localhost:8181 | grep -q "deployref"; then
+              echo "✅ Application is running"
+            else
+              echo "❌ Application failed to start"
+              exit 1
+            fi
+            echo "✅ Deployed ${TAG_NAME} -> ${CURRENT_SHA}"
