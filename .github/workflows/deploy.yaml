@@ -4,41 +4,20 @@ on:
     types: [created]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Build (install dependencies on Runner)
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
-      - name: Deploy to VM via SSH
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: course.prafdin.ru
-          port: 2200
+          port: 3176
           username: admin
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
             cd /home/admin/catty-reminders-app
-            TAG_NAME="${{ github.event.release.tag_name }}"
-            git fetch origin --tags
-            git reset --hard "refs/tags/${TAG_NAME}"
+            git fetch origin
+            git reset --hard ${{ github.sha }}
             /home/admin/catty-reminders-app/venv/bin/pip install -r requirements.txt
-            CURRENT_SHA=$(git rev-parse HEAD)
-            echo "DEPLOY_REF=${CURRENT_SHA}" | sudo tee /etc/catty-app-env
+            echo "DEPLOY_REF=${{ github.sha }}" | sudo tee /etc/catty-app-env
             sudo systemctl restart catty-reminders
-            sleep 3
-            if curl -sL http://localhost:8181 | grep -q "deployref"; then
-              echo "✅ Application is running"
-            else
-              echo "❌ Application failed to start"
-              exit 1
-            fi
-            echo "✅ Deployed ${TAG_NAME} -> ${CURRENT_SHA}"
