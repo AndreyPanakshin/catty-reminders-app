@@ -1,12 +1,16 @@
 [Unit]
-Description=Catty Reminders App
+Description=Catty Reminders App - DevOps Lab
 After=network.target
 
 [Service]
+Type=simple
 User=admin
 WorkingDirectory=/home/admin/catty-reminders-app
+Environment="PATH=/home/admin/catty-reminders-app/venv/bin:/usr/bin:/bin"
+EnvironmentFile=/etc/catty-app-env
 ExecStart=/home/admin/catty-reminders-app/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8181
 Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
