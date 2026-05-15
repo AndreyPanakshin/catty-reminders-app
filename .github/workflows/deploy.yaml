@@ -1,0 +1,57 @@
+name: CD
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy app via Docker
+        uses: appleboy/ssh-action@v1
+        with:
+          host: course.prafdin.ru
+          port: 3176
+          username: admin
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 30m
+          script: |
+            set -e
+
+            IMAGE_NAME="ghcr.io/panakshin/catty-reminders-app:${{ github.sha }}"
+            CONTAINER_NAME="catty-app"
+
+            echo "=== Docker deployment started ==="
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            docker stop $CONTAINER_NAME || true
+            docker rm $CONTAINER_NAME || true
+
+            docker pull $IMAGE_NAME
+
+            docker run -d \
+              --name $CONTAINER_NAME \
+              --restart always \
+              -p 8181:8181 \
+              -e DEPLOY_REF=${{ github.sha }} \
+              $IMAGE_NAME
+
+            echo "⏳ Waiting for application..."
+            for i in {1..10}; do
+              if curl -s http://localhost:8181 2>/dev/null | grep -qi "deployref\|${{ github.sha }}"; then
+                echo "✅ Application is responding"
+                break
+              fi
+              sleep 3
+            done
+
+            if ! curl -s http://localhost:8181 2>/dev/null | grep -qi "deployref\|${{ github.sha }}"; then
+              echo "❌ Application failed health check"
+              docker logs $CONTAINER_NAME || true
+              exit 1
+            fi
+
+            echo "=== Deployment completed successfully ==="
