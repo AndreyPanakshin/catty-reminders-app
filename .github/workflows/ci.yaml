@@ -63,7 +63,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/AndreyPanakshin/catty-reminders-app:${{ github.sha }}
-            ghcr.io/AndreyPanakshin/catty-reminders-app:latest
+            ghcr.io/andreypanakshin/catty-reminders-app:${{ github.sha }}
+            ghcr.io/andreypanakshin/catty-reminders-app:latest
           build-args: |
             DEPLOY_REF=${{ github.sha }}
