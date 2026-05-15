@@ -1,3 +1,4 @@
+
 name: Python CI
 
 on:
@@ -67,5 +68,3 @@ jobs:
             ghcr.io/panakshin/catty-reminders-app:latest
           build-args: |
             DEPLOY_REF=${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
