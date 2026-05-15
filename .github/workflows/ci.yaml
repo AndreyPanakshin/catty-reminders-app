@@ -1,4 +1,3 @@
-
 name: Python CI
 
 on:
@@ -64,7 +63,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/panakshin/catty-reminders-app:${{ github.sha }}
-            ghcr.io/panakshin/catty-reminders-app:latest
+            ghcr.io/AndreyPanakshin/catty-reminders-app:${{ github.sha }}
+            ghcr.io/AndreyPanakshin/catty-reminders-app:latest
           build-args: |
             DEPLOY_REF=${{ github.sha }}
