@@ -1,13 +1,12 @@
 name: CD
 on:
   release:
-    types: [created]
-
+    types: [published]
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy app via Docker
         uses: appleboy/ssh-action@v1
         with:
           host: course.prafdin.ru
@@ -15,9 +14,10 @@ jobs:
           username: admin
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/admin/catty-reminders-app
-            git fetch origin
-            git reset --hard ${{ github.sha }}
-            /home/admin/catty-reminders-app/venv/bin/pip install -r requirements.txt
-            echo "DEPLOY_REF=${{ github.sha }}" | sudo tee /etc/catty-app-env
-            sudo systemctl restart catty-reminders
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker stop catty-app 2>/dev/null || true
+            docker rm catty-app 2>/dev/null || true
+            docker pull ghcr.io/andreypanakshin/catty-reminders-app:${{ github.sha }}
+            docker run -d --name catty-app --restart always -p 127.0.0.1:8181:8181 -e DEPLOY_REF=${{ github.sha }} ghcr.io/andreypanakshin/catty-reminders-app:${{ github.sha }}
+            sleep 10
+            curl -sL http://127.0.0.1:8181 >/dev/null 2>&1 && echo "App responded" || echo "App not ready"
