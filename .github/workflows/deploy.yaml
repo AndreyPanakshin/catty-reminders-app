@@ -1,5 +1,4 @@
-name: CD
-
+name: Deploy
 on:
   release:
     types: [published]
@@ -8,19 +7,35 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy app via Docker
-        uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: course.prafdin.ru
-          port: 3176
           username: admin
+          port: 3176
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            docker stop catty-app 2>/dev/null || true
-            docker rm catty-app 2>/dev/null || true
-            docker pull ghcr.io/andreypanakshin/catty-reminders-app:${{ github.sha }}
-            docker run -d --name catty-app --restart always -p 127.0.0.1:8181:8181 ghcr.io/andreypanakshin/catty-reminders-app:${{ github.sha }}
-            sleep 10
-            curl -sL http://127.0.0.1:8181 >/dev/null 2>&1 && echo "App responded" || echo "App not ready"
-            exit 0
+            bash -c '
+              set -e
+              cd /home/admin/catty-reminders-app
+              OWNER=$(echo "${{ github.repository_owner }}" | tr "[:upper:]" "[:lower:]")
+              
+              export DEPLOY_REF=${{ github.sha }}
+              export IMAGE=ghcr.io/$OWNER/catty-reminders-app:${{ github.sha }}
+              
+              export DB_CONTAINER_NAME=catty-db
+              export APP_CONTAINER_NAME=catty-app
+              export MARIADB_ROOT_PASSWORD=mypass
+              export MARIADB_USER=admin
+              export MARIADB_PASSWORD=mypass
+              export MARIADB_DATABASE=catty_reminders
+              export HOST_DB_PORT=3306
+              export CONTEINER_DB_PORT=3306
+              export HOST_APP_PORT=8181
+              export CONTEINER_APP_PORT=8181
+
+              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+              docker compose up -d --pull always --remove-orphans --force-recreate 
+            '
