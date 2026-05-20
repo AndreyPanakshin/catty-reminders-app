@@ -74,12 +74,19 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     needs: pipeline
-    permissions: { contents: read, packages: write }
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
+      
       - name: Login to GHCR
         uses: docker/login-action@v3
-        with: { registry: ghcr.io, username: "andreypanakshin", password: "${{ secrets.GITHUB_TOKEN }}" }
+        with:
+          registry: ghcr.io
+          username: "andreypanakshin"
+          password: "${{ secrets.GHCR_TOKEN }}"
+      
       - name: Build and push
         uses: docker/build-push-action@v5
         with:

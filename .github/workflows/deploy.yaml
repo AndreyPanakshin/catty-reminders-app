@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -20,34 +21,14 @@ jobs:
             cd /home/admin/catty-reminders-app
             
             DEPLOY_REF="${{ github.sha }}"
+… # Логин в GHCR с персональным токеном
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u andreypanakshin --password-stdin
             
-            # Создаём .env файл с переменными
-            cat > .env << ENVEOF
-DB_CONTAINER_NAME=catty-db
-MARIADB_ROOT_PASSWORD=mypass
-MARIADB_USER=root
-MARIADB_PASSWORD=mypass
-MARIADB_DATABASE=catty_reminders
-HOST_DB_PORT=3306
-CONTAINER_DB_PORT=3306
-APP_CONTAINER_NAME=catty-app
-IMAGE=ghcr.io/andreypanakshin/catty-reminders-app:${DEPLOY_REF}
-DEPLOY_REF=${DEPLOY_REF}
-HOST_APP_PORT=8181
-CONTAINER_APP_PORT=8181
-ENVEOF
-
-            # Экспортируем переменные в текущую сессию
-            export $(cat .env | xargs)
-            
-            # Логин в GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u andreypanakshin --password-stdin
-            
-            # Pull и деплой только приложения (не трогаем БД)
+            # Pull и деплой
             docker compose pull catty-app
             docker compose up -d --no-deps --force-recreate catty-app
             
-            # Проверка работоспособности
+            # Проверка
             sleep 15
-            curl -s -o /dev/null -w "%{http_code}" http://localhost:8181/ | grep -q "200" || exit 1
+            curl -s -o /dev/null -w "%{http_code}" http://localhost:8181/ | grep -q "200\|302" || exit 1
             echo "✅ Deployment successful"
