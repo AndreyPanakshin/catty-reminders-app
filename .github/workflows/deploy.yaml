@@ -19,27 +19,35 @@ jobs:
             set -e
             cd /home/admin/catty-reminders-app
             
-            OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
             DEPLOY_REF="${{ github.sha }}"
             
-            echo "DB_CONTAINER_NAME=catty-db" > .env
-            echo "MARIADB_ROOT_PASSWORD=mypass" >> .env
-            echo "MARIADB_USER=root" >> .env
-            echo "MARIADB_PASSWORD=mypass" >> .env
-            echo "MARIADB_DATABASE=catty_reminders" >> .env
-            echo "HOST_DB_PORT=3306" >> .env
-            echo "CONTAINER_DB_PORT=3306" >> .env
-            echo "APP_CONTAINER_NAME=catty-app" >> .env
-            echo "IMAGE=ghcr.io/${OWNER}/catty-reminders-app:${DEPLOY_REF}" >> .env
-            echo "DEPLOY_REF=${DEPLOY_REF}" >> .env
-            echo "HOST_APP_PORT=8181" >> .env
-            echo "CONTAINER_APP_PORT=8181" >> .env
+            # Создаём .env файл с переменными
+            cat > .env << ENVEOF
+DB_CONTAINER_NAME=catty-db
+MARIADB_ROOT_PASSWORD=mypass
+MARIADB_USER=root
+MARIADB_PASSWORD=mypass
+MARIADB_DATABASE=catty_reminders
+HOST_DB_PORT=3306
+CONTAINER_DB_PORT=3306
+APP_CONTAINER_NAME=catty-app
+IMAGE=ghcr.io/andreypanakshin/catty-reminders-app:${DEPLOY_REF}
+DEPLOY_REF=${DEPLOY_REF}
+HOST_APP_PORT=8181
+CONTAINER_APP_PORT=8181
+ENVEOF
 
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Экспортируем переменные в текущую сессию
+            export $(cat .env | xargs)
             
+            # Логин в GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u andreypanakshin --password-stdin
+            
+            # Pull и деплой только приложения (не трогаем БД)
             docker compose pull catty-app
             docker compose up -d --no-deps --force-recreate catty-app
             
-            sleep 10
-            curl -f http://localhost:8181/login || exit 1
+            # Проверка работоспособности
+            sleep 15
+            curl -s -o /dev/null -w "%{http_code}" http://localhost:8181/ | grep -q "200" || exit 1
             echo "✅ Deployment successful"
