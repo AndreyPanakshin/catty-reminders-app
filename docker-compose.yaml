@@ -9,25 +9,24 @@ services:
       - MARIADB_USER=${MARIADB_USER}
       - MARIADB_PASSWORD=${MARIADB_PASSWORD}
     ports:
-      - "${HOST_DB_PORT}:${CONTEINER_DB_PORT}"
+      - "${HOST_DB_PORT:-3306}:${CONTAINER_DB_PORT:-3306}"
     volumes:
       - db_data:/var/lib/mysql
     networks:
       - catty-network
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
   catty-app:
     image: ${IMAGE}
     container_name: ${APP_CONTAINER_NAME}
     restart: always
-    environment:
-      - DEPLOY_REF=${DEPLOY_REF}
-    ports: 
-      - "${HOST_APP_PORT}:${CONTEINER_APP_PORT}"
+    ports:
+      - "${HOST_APP_PORT:-8181}:${CONTAINER_APP_PORT:-8181}"
     volumes:
       - ./config.json:/catty-reminders-app/config.json:ro
     depends_on:

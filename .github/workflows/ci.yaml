@@ -1,25 +1,39 @@
-name: Python CI
+name: CI
 
 on:
   push:
     branches: [ lab4* ]
-  pull_request:
-    branches: [ lab4* ]
-
-permissions:
-  contents: read
-  packages: write
 
 jobs:
-  test:
+  docker-lint:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hadolint
+        run: docker run --rm -i hadolint/hadolint hadolint - < Dockerfile
+
+  pipeline:
+    needs: docker-lint
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: mariadb:11.8.6-ubi9
+        env:
+          MARIADB_ROOT_PASSWORD: mypass
+          MARIADB_DATABASE: catty_reminders
+        ports: [ 3306:3306 ]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -pmypass"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+        with: { python-version: "3.12" }
 
       - name: Install dependencies
         run: |
@@ -29,49 +43,50 @@ jobs:
 
       - name: Patch config for CI
         run: |
-          echo "=== Original config.json ==="
-          cat config.json
           sed -i 's/"host": "db"/"host": "127.0.0.1"/g' config.json
-          echo "=== Patched config.json ==="
-          cat config.json
+
+      - name: Wait for MariaDB
+        run: |
+          for i in {1..30}; do
+            if mysql -h 127.0.0.1 -P 3306 -u root -pmypass -e "SELECT 1" &>/dev/null; then
+              echo "✅ DB ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+
       - name: Start app
         run: |
           nohup uvicorn app.main:app --host 127.0.0.1 --port 8181 > app.log 2>&1 &
           sleep 10
           curl -f http://127.0.0.1:8181/login || (cat app.log && exit 1)
+
       - name: Run tests
-        env:
-          PYTHONPATH: "${{ github.workspace }}"
+        env: { PYTHONPATH: "${{ github.workspace }}" }
         run: pytest --junitxml=test_result.xml
 
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
-        with:
-          name: test_result
-          path: test_result.xml
+        with: { name: test_result, path: test_result.xml }
 
   docker-build:
     runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push'
+    needs: pipeline
+    permissions: { contents: read, packages: write }
     steps:
       - uses: actions/checkout@v4
-
-      - name: Login to GitHub Container Registry
+      - name: Login to GHCR
         uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-
-      - name: Build and push Docker image
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: |
-            ghcr.io/${{ github.actor }}/catty-reminders-app:latest
-            ghcr.io/${{ github.actor }}/catty-reminders-app:${{ github.sha }}
           build-args: |
             DEPLOY_REF=${{ github.sha }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/catty-reminders-app:latest
+            ghcr.io/${{ github.repository_owner }}/catty-reminders-app:${{ github.sha }}
