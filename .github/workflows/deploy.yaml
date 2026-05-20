@@ -21,21 +21,7 @@ jobs:
             cd /home/admin/catty-reminders-app
             
             DEPLOY_REF="${{ github.sha }}"
-            
-            cat > .env << ENVEOF
-DB_CONTAINER_NAME=catty-db
-MARIADB_ROOT_PASSWORD=mypass
-MARIADB_USER=root
-MARIADB_PASSWORD=mypass
-MARIADB_DATABASE=catty_reminders
-HOST_DB_PORT=3306
-CONTAINER_DB_PORT=3306
-APP_CONTAINER_NAME=catty-app
-IMAGE=ghcr.io/andreypanakshin/catty-reminders-app:${DEPLOY_REF}
-DEPLOY_REF=${DEPLOY_REF}
-HOST_APP_PORT=8181
-CONTAINER_APP_PORT=8181
-ENVEOF
+…echo "CONTAINER_APP_PORT=8181" >> .env
 
             export $(cat .env | xargs)
             
