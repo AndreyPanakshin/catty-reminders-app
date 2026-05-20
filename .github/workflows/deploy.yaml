@@ -19,9 +19,7 @@ jobs:
           script: |
             set -e
             cd /home/admin/catty-reminders-app
-            
             DEPLOY_REF="${{ github.sha }}"
-            
             echo "DB_CONTAINER_NAME=catty-db" > .env
             echo "MARIADB_ROOT_PASSWORD=mypass" >> .env
             echo "MARIADB_USER=root" >> .env
@@ -34,14 +32,10 @@ jobs:
             echo "DEPLOY_REF=${DEPLOY_REF}" >> .env
             echo "HOST_APP_PORT=8181" >> .env
             echo "CONTAINER_APP_PORT=8181" >> .env
-
             export $(cat .env | xargs)
-            
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u andreypanakshin --password-stdin
-            
             docker compose pull catty-app
             docker compose up -d --no-deps --force-recreate catty-app
-            
             sleep 15
-            curl -s -o /dev/null -w "%{http_code}" http://localhost:8181/ | grep -q "200\|302" || exit 1
+            curl -s -o /dev/null -w "%{http_code}" http://localhost:8181/ | grep -qE "200|302" || exit 1
             echo "Deployment successful"
