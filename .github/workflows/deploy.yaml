@@ -21,14 +21,29 @@ jobs:
             cd /home/admin/catty-reminders-app
             
             DEPLOY_REF="${{ github.sha }}"
-… # Логин в GHCR с персональным токеном
+            
+            cat > .env << ENVEOF
+DB_CONTAINER_NAME=catty-db
+MARIADB_ROOT_PASSWORD=mypass
+MARIADB_USER=root
+MARIADB_PASSWORD=mypass
+MARIADB_DATABASE=catty_reminders
+HOST_DB_PORT=3306
+CONTAINER_DB_PORT=3306
+APP_CONTAINER_NAME=catty-app
+IMAGE=ghcr.io/andreypanakshin/catty-reminders-app:${DEPLOY_REF}
+DEPLOY_REF=${DEPLOY_REF}
+HOST_APP_PORT=8181
+CONTAINER_APP_PORT=8181
+ENVEOF
+
+            export $(cat .env | xargs)
+            
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u andreypanakshin --password-stdin
             
-            # Pull и деплой
             docker compose pull catty-app
             docker compose up -d --no-deps --force-recreate catty-app
             
-            # Проверка
             sleep 15
             curl -s -o /dev/null -w "%{http_code}" http://localhost:8181/ | grep -q "200\|302" || exit 1
-            echo "✅ Deployment successful"
+            echo "Deployment successful"
