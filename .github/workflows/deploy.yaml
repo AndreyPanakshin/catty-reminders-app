@@ -1,3 +1,4 @@
+
 name: Deploy
 on:
   release:
@@ -40,25 +41,17 @@ jobs:
             CONTAINER_APP_PORT=8181
             EOF
 
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u andreypanakshin --password-stdin
 
-            docker compose down
-            docker compose up -d --pull always
+            docker compose pull catty-app
+            docker compose up -d --force-recreate
 
             for i in 1 2 3 4 5 6 7 8 9 10; do
               if curl -s http://localhost:8181/api/reminders > /dev/null 2>&1; then
                 echo "App is ready"
-                break
-              fi
-              sleep 3
-            done
-
-            for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
-              if curl -s -o /dev/null -w "%{http_code}" http://localhost:8181/login | grep -qE "200|302|405"; then
-                echo "App responded"
                 exit 0
               fi
-              sleep 2
+              sleep 3
             done
             echo "App failed to start"
             docker compose logs catty-app
