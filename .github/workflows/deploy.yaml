@@ -17,7 +17,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            cd /home/rover/catty-reminders-app
+            cd /home/admin/catty-reminders-app
             
             OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
             DEPLOY_REF="${{ github.sha }}"
