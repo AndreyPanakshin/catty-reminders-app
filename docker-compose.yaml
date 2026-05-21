@@ -4,36 +4,29 @@ services:
     container_name: catty-db
     restart: always
     environment:
-      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-mypass}
-      - MARIADB_DATABASE=${MARIADB_DATABASE:-catty_reminders}
-      - MARIADB_USER=${MARIADB_USER:-root}
-      - MARIADB_PASSWORD=${MARIADB_PASSWORD:-mypass}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
     ports:
-      - "${HOST_DB_PORT:-3306}:${CONTAINER_DB_PORT:-3306}"
+      - "${HOST_DB_PORT}:${CONTAINER_DB_PORT}"
     volumes:
       - db_data:/var/lib/mysql
     networks:
       - catty-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MARIADB_ROOT_PASSWORD:-mypass}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 40s
 
   catty-app:
-    image: ${IMAGE:-ghcr.io/andreypanakshin/catty-reminders-app:latest}
-    container_name: ${APP_CONTAINER_NAME:-catty-app}
+    image: ${IMAGE}
+    container_name: ${APP_CONTAINER_NAME}
     restart: always
     ports:
-      - "${HOST_APP_PORT:-8181}:${CONTAINER_APP_PORT:-8181}"
+      - "${HOST_APP_PORT}:${CONTAINER_APP_PORT}"
     volumes:
       - ./config.json:/catty-reminders-app/config.json:ro
     environment:
-      - DEPLOY_REF=${DEPLOY_REF:-NA}
+      - DEPLOY_REF=${DEPLOY_REF}
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     networks:
       - catty-network
 
