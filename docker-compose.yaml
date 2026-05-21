@@ -1,7 +1,7 @@
 services:
   db:
     image: mariadb:11
-    container_name: ${DB_CONTAINER_NAME:-catty-db}
+    container_name: catty-db
     restart: always
     environment:
       - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD:-mypass}
@@ -15,11 +15,11 @@ services:
     networks:
       - catty-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD:-mypass}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MARIADB_ROOT_PASSWORD:-mypass}"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 10
+      start_period: 40s
 
   catty-app:
     image: ${IMAGE:-ghcr.io/andreypanakshin/catty-reminders-app:latest}
