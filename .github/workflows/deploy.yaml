@@ -1,4 +1,3 @@
-
 name: Deploy
 on:
   release:
@@ -7,11 +6,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      packages: read
     steps:
       - uses: actions/checkout@v4
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -21,38 +17,24 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            cd /home/admin/catty-reminders-app
-
+            cd /home/rover/catty-reminders-app
+            
             OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
             DEPLOY_REF="${{ github.sha }}"
+            
+            echo "DB_CONTAINER_NAME=catty-db" > .env
+            echo "MARIADB_ROOT_PASSWORD=mypass" >> .env
+            echo "MARIADB_USER=root" >> .env
+            echo "MARIADB_PASSWORD=mypass" >> .env
+            echo "MARIADB_DATABASE=catty_reminders" >> .env
+            echo "HOST_DB_PORT=3306" >> .env
+            echo "CONTEINER_DB_PORT=3306" >> .env
+            echo "APP_CONTAINER_NAME=catty-reminders-app" >> .env
+            echo "IMAGE=ghcr.io/${OWNER}/catty-reminders-app:${DEPLOY_REF}" >> .env
+            echo "DEPLOY_REF=${DEPLOY_REF}" >> .env
+            echo "HOST_APP_PORT=8181" >> .env
+            echo "CONTEINER_APP_PORT=8181" >> .env
 
-            cat > .env << EOF
-            DB_CONTAINER_NAME=catty-db
-            MARIADB_ROOT_PASSWORD=mypass
-            MARIADB_USER=root
-            MARIADB_PASSWORD=mypass
-            MARIADB_DATABASE=catty_reminders
-            HOST_DB_PORT=3306
-            CONTAINER_DB_PORT=3306
-            APP_CONTAINER_NAME=catty-app
-            IMAGE=ghcr.io/${OWNER}/catty-reminders-app:${DEPLOY_REF}
-            DEPLOY_REF=${DEPLOY_REF}
-            HOST_APP_PORT=8181
-            CONTAINER_APP_PORT=8181
-            EOF
-
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u andreypanakshin --password-stdin
-
-            docker compose pull catty-app
-            docker compose up -d --force-recreate
-
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              if curl -s http://localhost:8181/api/reminders > /dev/null 2>&1; then
-                echo "App is ready"
-                exit 0
-              fi
-              sleep 3
-            done
-            echo "App failed to start"
-            docker compose logs catty-app
-            exit 1
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            docker compose up -d --pull always --remove-orphans --force-recreate
